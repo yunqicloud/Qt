@@ -7,6 +7,17 @@ qt_standard_project_setup()
 
 qt_add_executable(PvZLike
     main.cpp
+    Game.h Game.cpp
+    Entity.h
+    Sprite.h Sprite.cpp
+    Manager.h
+
+    Map.h Map.cpp
+    Resource.qrc
+    Plants.h Plants.cpp
+    Bullet.h Bullet.cpp
+    Zombies.h Zombies.cpp
+
 )
 
 target_link_libraries(PvZLike

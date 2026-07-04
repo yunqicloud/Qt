@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/">
+        <file>R/graphics/Background/Background_0.jpg</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_0.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_1.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_2.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_3.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_4.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_5.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_6.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_7.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_8.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_9.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_10.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_11.png</file>
+        <file>R/graphics/Plants/Peashooter/Peashooter_12.png</file>
+    </qresource>
+</RCC>
