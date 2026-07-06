@@ -4,8 +4,12 @@
 #include <QWidget>
 #include <QIcon>
 #include "Manager.h"
+#include "SoundManager.h"
+#include <QElapsedTimer>
+
 class Map;
 class Qpainter;
+
 
 class Game : public QWidget
 {
@@ -31,9 +35,16 @@ protected:
 
 private:
     Map *map;
+    void initSound();
+    // 通用接口:传入 qrc 路径直接播放
+    void playSound(const QString& path);
+    // 类型安全接口:传入 SoundType 枚举(推荐)
+    void playSound(SoundType type);
+
 public:
     inline static int WIDTH = 0;
     inline static int HEIGHT = 0;
+    inline static QElapsedTimer globalElapsedTimer;
 };
 
 #endif // GAME_H

@@ -1,6 +1,8 @@
 #ifndef PLANTS_H
 #define PLANTS_H
 #include "Sprite.h"
+
+
 class Plants : public Sprite
 {
 public:

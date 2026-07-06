@@ -27,6 +27,21 @@ public:
         return e;
     }
 
+    template<typename T>
+    QSet<T*> getEntityByType(int type)
+    {
+        QSet<T*> set;
+        for(auto e : std::as_const(entities))
+        {
+            if (e -> type() == type)
+            {
+                set.insert(static_cast<T*>(e));
+            }
+        }
+        return set;
+    }
+
+
     qsizetype count()const {return entities.count();}
 
     void update()
