@@ -1,13 +1,30 @@
 #include "Animation.h"
 #include "Game.h"
+
+// 项目内资源根目录(同 SoundManager/Game 用的 PVL_R_DIR 宏)
+#include <QString>
+namespace {
+QString rRoot()
+{
+#ifdef PVL_R_DIR
+    return QString(PVL_R_DIR);
+#else
+    return QString();
+#endif
+}
+}
+
 Animation::Animation(int animSpeed) : animSpeed(animSpeed)
 {
 
 }
 
-void Animation::addFrame(const QString &filename)
+void Animation::addFrame(const QString &relPath)
 {
-    return pixmaps.append(QPixmap(filename));
+    // 参数是相对项目 R/ 的路径(如 "graphics/Plants/Peashooter/Peashooter_0.png")
+    // 内部拼接成项目内绝对路径,完全脱离 qrc
+    const QString full = rRoot() + "/" + relPath;
+    pixmaps.append(QPixmap(full));
 }
 
 QPixmap Animation::getFrame(int index) const

@@ -1,41 +1,6 @@
 <RCC>
+    <!-- 资源已全部走项目内源码路径(PVL_R_DIR 宏),不再用 qrc 嵌入。
+         这里保留空 qresource 以兼容旧 CMakeLists 配置。 -->
     <qresource prefix="/">
-        <file>R/graphics/Background/Background_0.jpg</file>
-
-        <file>R/graphics/Plants/Peashooter/Peashooter_0.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_1.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_2.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_3.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_4.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_5.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_6.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_7.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_8.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_9.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_10.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_11.png</file>
-        <file>R/graphics/Plants/Peashooter/Peashooter_12.png</file>
-
-        <!-- 背景音乐 -->
-        <file>R/music/intro.opus</file>
-        <file>R/music/battle.opus</file>
-        <file>R/music/dayLevel.opus</file>
-        <file>R/music/nightLevel.opus</file>
-        <file>R/music/poolLevel.opus</file>
-        <file>R/music/fogLevel.opus</file>
-        <file>R/music/bowling.opus</file>
-        <file>R/music/zenGarden.opus</file>
-
-        <!-- 短音效 -->
-        <file>R/sound/shoot.ogg</file>
-        <file>R/sound/bulletExplode.ogg</file>
-        <file>R/sound/plant.ogg</file>
-        <file>R/sound/plantDie.ogg</file>
-        <file>R/sound/zombieAttack.ogg</file>
-        <file>R/sound/zombieComing.ogg</file>
-        <file>R/sound/hugeWaveApproching.ogg</file>
-        <file>R/sound/evillaugh.ogg</file>
-        <file>R/sound/buttonclick.ogg</file>
-        <file>R/sound/win.ogg</file>
     </qresource>
 </RCC>

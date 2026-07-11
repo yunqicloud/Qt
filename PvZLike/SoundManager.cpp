@@ -1,11 +1,45 @@
 #include "SoundManager.h"
+#include <QCoreApplication>
 #include <QFile>
-#include <QStandardPaths>
-#include <QUrl>
 
-SoundManager::SoundManager(QObject *parent)
-    : QObject(parent)
+// 项目内资源根目录。
+// CMake 在编译时把 PVL_R_DIR 展开成源码 R/ 的绝对路径,所有音频加载走这里,
+// 不依赖运行时拷贝。如果宏未定义(罕见),回退到 exe 同级 R/(分发场景)。
+static QString rRoot()
 {
+#ifdef PVL_R_DIR
+    return QString(PVL_R_DIR);
+#else
+    return QCoreApplication::applicationDirPath() + "/R";
+#endif
+}
+
+namespace {
+// 每个 SoundType 分配的并发通道数。BGM 1 个,高频音效给 4 个应对密集触发。
+QMap<SoundType, int> defaultAllocations()
+{
+    return {
+        { SoundType::BGM,           1 },   // 背景音乐:1 个,循环,够用
+        { SoundType::Shoot,         4 },   // 豌豆发射:并发可能 4+
+        { SoundType::BulletExplode, 4 },   // 豌豆爆炸:并发可能多
+        { SoundType::ZombieAttack,  4 },   // 啃咬声:多僵尸同时啃咬
+        { SoundType::ZombieComing,  1 },   // 进场提示:只播一次
+        { SoundType::Plant,         1 },
+        { SoundType::PlantDie,      1 },
+        { SoundType::HugeWave,      1 },
+        { SoundType::EvilLaugh,     1 },
+        { SoundType::Win,           1 },
+    };
+}
+} // namespace
+
+SoundManager::SoundManager(QObject *parent) : QObject(parent) {}
+
+SoundManager::~SoundManager()
+{
+    for (auto it = m_channels.constBegin(); it != m_channels.constEnd(); ++it)
+        for (const Channel& ch : it.value())
+            if (ch.player) ch.player->stop();
 }
 
 SoundManager *SoundManager::instance()
@@ -14,26 +48,52 @@ SoundManager *SoundManager::instance()
     return &ins;
 }
 
-// 把枚举映射到 qrc 资源路径(用来 dump 到 cache 目录)
-static QString qrcPathOf(SoundType type)
+QString SoundManager::resolvePath(SoundType type) const
 {
+    const QString base = rRoot();
     switch (type)
     {
-    case SoundType::BGM:           return "qrc:/R/music/battle.opus";
-
-    case SoundType::Shoot:         return "qrc:/R/sound/shoot.ogg";
-    case SoundType::BulletExplode: return "qrc:/R/sound/bulletExplode.ogg";
-    case SoundType::Plant:         return "qrc:/R/sound/plant.ogg";
-    case SoundType::PlantDie:      return "qrc:/R/sound/plantDie.ogg";
-
-    case SoundType::ZombieAttack:  return "qrc:/R/sound/zombieAttack.ogg";
-    case SoundType::ZombieComing:  return "qrc:/R/sound/zombieComing.ogg";
-    case SoundType::HugeWave:      return "qrc:/R/sound/hugeWaveApproching.ogg";
-    case SoundType::EvilLaugh:     return "qrc:/R/sound/evillaugh.ogg";
-
-    case SoundType::Win:           return "qrc:/R/sound/win.ogg";
+    case SoundType::BGM:           return base + "/music/battle.opus";
+    case SoundType::Shoot:         return base + "/sound/shoot.ogg";
+    case SoundType::BulletExplode: return base + "/sound/bulletExplode.ogg";
+    case SoundType::Plant:         return base + "/sound/plant.ogg";
+    case SoundType::PlantDie:      return base + "/sound/plantDie.ogg";
+    case SoundType::ZombieAttack:  return base + "/sound/zombieAttack.ogg";
+    case SoundType::ZombieComing:  return base + "/sound/zombieComing.ogg";
+    case SoundType::HugeWave:      return base + "/sound/hugeWaveApproching.ogg";
+    case SoundType::EvilLaugh:     return base + "/sound/evillaugh.ogg";
+    case SoundType::Win:           return base + "/sound/win.ogg";
     }
     return {};
+}
+
+void SoundManager::initTypeChannels(SoundType type, int count, bool loop)
+{
+    const QString localPath = resolvePath(type);
+    if (localPath.isEmpty()) return;
+
+    // 文件不存在就跳过(不报警,某些 SoundType 可能还没启用)
+    if (!QFile::exists(localPath))
+    {
+        qWarning("SoundManager: 音频文件不存在,跳过 %s", qPrintable(localPath));
+        return;
+    }
+
+    QList<Channel> list;
+    list.reserve(count);
+    for (int i = 0; i < count; ++i)
+    {
+        Channel ch;
+        ch.player = new QMediaPlayer(this);
+        ch.output = new QAudioOutput(this);
+        ch.player->setAudioOutput(ch.output);
+        ch.player->setLoops(loop ? QMediaPlayer::Infinite : 1);
+        // 一次性 setSource,启动时建立好 FFmpeg 流,运行时不再 setSource
+        ch.player->setSource(QUrl::fromLocalFile(localPath));
+        list.append(ch);
+    }
+    m_channels.insert(type, list);
+    m_cursors.insert(type, 0);
 }
 
 void SoundManager::init()
@@ -41,115 +101,82 @@ void SoundManager::init()
     if (m_inited) return;
     m_inited = true;
 
-    // 建立 cache 目录,把 qrc 资源 dump 到磁盘,QSoundEffect 走本地路径加载
-    // (Windows + FFmpeg 7.x 对 qrc:/... URL 解码有兼容问题,这是 workaround)
-    QString cacheRoot = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    m_cacheDir = QDir(cacheRoot + "/PvZLikeSounds");
-    if (!m_cacheDir.exists())
+    const auto allocs = defaultAllocations();
+    for (auto it = allocs.constBegin(); it != allocs.constEnd(); ++it)
     {
-        m_cacheDir.mkpath(".");
+        const SoundType type = it.key();
+        const int count = it.value();
+        const bool loop = (type == SoundType::BGM);  // BGM 循环,其他单次
+        initTypeChannels(type, count, loop);
     }
-
-    // 预创建音效通道
-    m_sfxPool.reserve(SFX_CHANNEL_COUNT);
-    for (int i = 0; i < SFX_CHANNEL_COUNT; ++i)
-    {
-        QSoundEffect* fx = new QSoundEffect(this);
-        fx->setVolume(1.0f);
-        m_sfxPool.append(fx);
-    }
-
-    // 背景音乐独占一个通道
-    m_bgm = new QSoundEffect(this);
-    m_bgm->setLoopCount(QSoundEffect::Infinite);
-    m_bgm->setVolume(0.6f);
-}
-
-QString SoundManager::ensureLocalFile(SoundType type)
-{
-    const QString qrcPath = qrcPathOf(type);
-    if (qrcPath.isEmpty()) return {};
-
-    // 从 qrc 路径里取出文件名,作为 cache 中的目标文件名
-    QString filename = qrcPath;
-    int slash = filename.lastIndexOf('/');
-    if (slash >= 0) filename = filename.mid(slash + 1);
-
-    const QString localPath = m_cacheDir.filePath(filename);
-
-    // 已存在则直接返回
-    if (QFile::exists(localPath)) return localPath;
-
-    // 从 qrc 资源读取原始字节,写到 cache 目录
-    QFile src(qrcPath);
-    if (!src.open(QIODevice::ReadOnly))
-    {
-        qWarning("SoundManager: 无法打开 qrc 资源 %s", qPrintable(qrcPath));
-        return {};
-    }
-    const QByteArray data = src.readAll();
-    src.close();
-
-    QFile dst(localPath);
-    if (!dst.open(QIODevice::WriteOnly))
-    {
-        qWarning("SoundManager: 无法写入 cache 文件 %s", qPrintable(localPath));
-        return {};
-    }
-    dst.write(data);
-    dst.close();
-
-    return localPath;
 }
 
 void SoundManager::playSfx(SoundType type, float volume)
 {
     if (m_muted || !m_inited) return;
-    if (m_sfxPool.isEmpty()) return;
 
-    const QString localPath = ensureLocalFile(type);
-    if (localPath.isEmpty()) return;
+    auto it = m_channels.find(type);
+    if (it == m_channels.end() || it.value().isEmpty()) return;
 
-    // 轮询选一个空闲通道;若都忙就抢当前 cursor(老音会被新音截断,
-    // 这对短音反而是对的体验——密集发射时只听到最新的几次)
-    QSoundEffect* fx = m_sfxPool[m_sfxCursor];
-    m_sfxCursor = (m_sfxCursor + 1) % m_sfxPool.size();
+    QList<Channel>& list = it.value();
+    int& cursor = m_cursors[type];
 
-    fx->setSource(QUrl::fromLocalFile(localPath));
-    fx->setVolume(qBound(0.0f, volume, 1.0f));
-    fx->play();
+    // 优先找空闲 channel(playbackState == StoppedState 表示已播完)
+    int chosen = -1;
+    int baseIdx = cursor;
+    for (int i = 0; i < list.size(); ++i)
+    {
+        const int idx = (baseIdx + i) % list.size();
+        if (list[idx].player->playbackState() != QMediaPlayer::PlayingState)
+        {
+            chosen = idx;
+            break;
+        }
+    }
+    if (chosen < 0)
+    {
+        // 都忙,轮询抢一个
+        chosen = cursor;
+    }
+
+    cursor = (chosen + 1) % list.size();
+    Channel& ch = list[chosen];
+
+    ch.output->setVolume(qBound(0.0f, volume, 1.0f));
+    // 关键:stop() 让 QMediaPlayer 重置到 StoppedState + position=0,
+    // 再 play() 自动从 0 开始;source 不需要重新 LoadingMedia (init 期已 loaded),
+    // 所以不会触发 "Input #0, ogg, from" 重新探测。
+    // setPosition(0) 在 EndOfMedia 状态下行为不可靠,改用 stop() 更稳。
+    ch.player->stop();
+    ch.player->play();
 }
 
 void SoundManager::playBgm(SoundType type, float volume)
 {
     if (!m_inited) init();
-    if (!m_bgm) return;
 
-    if (m_muted)
-    {
-        m_bgm->stop();
-        return;
-    }
+    if (m_muted) { stopBgm(); return; }
 
-    const QString localPath = ensureLocalFile(type);
-    if (localPath.isEmpty()) return;
+    auto it = m_channels.find(type);
+    if (it == m_channels.end() || it.value().isEmpty()) return;
 
-    // 已经在播同一首就不打断
-    if (m_bgm->source().toLocalFile() == localPath && m_bgm->isPlaying())
-        return;
+    Channel& ch = it.value().first();
+    if (!ch.player || !ch.output) return;
 
-    m_bgm->setSource(QUrl::fromLocalFile(localPath));
-    m_bgm->setVolume(qBound(0.0f, volume, 1.0f));
-    m_bgm->play();
+    ch.output->setVolume(qBound(0.0f, volume, 1.0f));
+    ch.player->stop();
+    ch.player->play();
 }
 
 void SoundManager::stopBgm()
 {
-    if (m_bgm) m_bgm->stop();
+    auto it = m_channels.find(SoundType::BGM);
+    if (it == m_channels.end() || it.value().isEmpty()) return;
+    if (it.value().first().player) it.value().first().player->stop();
 }
 
 void SoundManager::setMuted(bool muted)
 {
     m_muted = muted;
-    if (muted && m_bgm) m_bgm->stop();
+    if (muted) stopBgm();
 }

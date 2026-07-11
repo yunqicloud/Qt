@@ -2,13 +2,13 @@
 #define SOUNDMANAGER_H
 
 #include <QObject>
-#include <QSoundEffect>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 #include <QString>
 #include <QList>
-#include <QDir>
+#include <QMap>
 
-// 可识别的音效/音乐类型(只保留项目中实际会触发的)
-// 资源路径通过 sfxPath() / bgmPath() 映射到 Resource.qrc
+// 可识别的音效/音乐类型
 enum class SoundType
 {
     BGM,                  // 背景音乐(循环)
@@ -27,7 +27,6 @@ enum class SoundType
     Win,                  // 胜利
 };
 
-// 全局短别名,和 Mgr 一个用法
 #define SoundMgr SoundManager::instance()
 
 class SoundManager : public QObject
@@ -36,43 +35,39 @@ class SoundManager : public QObject
 public:
     static SoundManager* instance();
 
-    // 启动时调用一次:把 qrc 资源 dump 到 cache 目录,创建音效通道
+    // 启动时调用:为每个 SoundType 预创建 N 个 channel,一次性 setSource,
+    // 之后所有播放都只调 setPosition(0) + play()(完全不碰 setSource,
+    // 避免运行时反复重建 FFmpeg 解码器引发警告/卡顿/崩溃)
     void init();
 
-    // 播放一次性音效。channel 个独立通道,密集触发时轮询,
-    // 避免前一个还没播完被截断
     void playSfx(SoundType type, float volume = 1.0f);
-
-    // 播放/循环背景音乐
     void playBgm(SoundType type, float volume = 0.6f);
 
-    // 停止背景音乐
     void stopBgm();
-
-    // 静默所有声音
     void setMuted(bool muted);
     bool isMuted() const { return m_muted; }
 
 private:
     explicit SoundManager(QObject *parent = nullptr);
+    ~SoundManager() override;
 
-    // 把 qrc 里的音频文件 dump 到 cache 目录(第一次播放某文件时)
-    QString ensureLocalFile(SoundType type);
+    QString resolvePath(SoundType type) const;
 
-    // 短音效池
-    QList<QSoundEffect*> m_sfxPool;
-    QSoundEffect* m_bgm = nullptr;
+    // 单个音频通道
+    struct Channel
+    {
+        QMediaPlayer*  player = nullptr;
+        QAudioOutput*  output = nullptr;
+    };
 
-    // 用于本地路径加载(QSoundEffect 在 Windows + FFmpeg 7.x 上
-    // 直接 load qrc:/... 会报 Error decoding;先把 qrc 数据 dump 到
-    // cache 目录再走本地路径,稳定可靠)
-    QDir m_cacheDir;
+    void initTypeChannels(SoundType type, int count, bool loop);
 
-    int m_sfxCursor = 0;
+    // 每个 SoundType 一组 channel。运行时只从对应组里选一个空闲的 setPosition+play
+    QMap<SoundType, QList<Channel>> m_channels;
+    QMap<SoundType, int>          m_cursors;     // 每个 SoundType 自己的轮询游标
+
     bool m_muted = false;
     bool m_inited = false;
-
-    static constexpr int SFX_CHANNEL_COUNT = 8;
 };
 
 #endif // SOUNDMANAGER_H

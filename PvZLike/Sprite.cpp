@@ -1,12 +1,25 @@
 #include "Sprite.h"
 #include "Game.h"
 
+// 项目内资源根目录
+namespace {
+QString rRoot()
+{
+#ifdef PVL_R_DIR
+    return QString(PVL_R_DIR);
+#else
+    return QString();
+#endif
+}
+}
+
 Sprite::Sprite() {}
 
-Sprite::Sprite(int x, int y, const QString &filename)
+Sprite::Sprite(int x, int y, const QString &relPath)
     :position(x, y)
 {
-    pixmap.load(filename);
+    // 参数是相对项目 R/ 的路径,内部拼成绝对路径
+    pixmap.load(rRoot() + "/" + relPath);
 }
 
 Sprite::~Sprite()

@@ -32,8 +32,24 @@ target_link_libraries(PvZLike
         Qt::Multimedia
 )
 
+# 把项目内的 R/ 资源目录在编译时以绝对路径注入代码。
+# 代码里的 PVL_R_DIR 直接展开成源码 R/ 路径,
+# 加载图片/音频走源码目录,不依赖运行时拷贝。
+target_compile_definitions(PvZLike PRIVATE
+    PVL_R_DIR="${CMAKE_CURRENT_SOURCE_DIR}/R"
+)
+
+# 同时也在 build 时把 R/ 拷贝到 exe 旁(双保险):
+# - 开发时 main.cpp 启动看到 PVL_R_DIR 指向源码 R/,直接读
+# - 分发时如果拿不到源码路径,exe 旁的 R/ 也能跑
+add_custom_command(TARGET PvZLike POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/R"
+        "$<TARGET_FILE_DIR:PvZLike>/R"
+)
+
 install(TARGETS PvZLike
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBIR}
 )
