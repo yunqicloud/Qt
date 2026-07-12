@@ -1,0 +1,3 @@
+// 嵌入 Windows 图标到 exe 资源
+// 这样资源管理器里 PvZLike.exe 旁边会显示这个图标
+IDI_ICON1 ICON "app.ico"

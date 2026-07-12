@@ -1,0 +1,90 @@
+# ============================================
+#  Qt (C++/CMake/QMake) 构建产物
+# ============================================
+build/
+dist/
+build-*/
+cmake-build-*/
+out/
+
+.qtcreator/
+*.pro.user
+*.pro.user.*
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+
+# ============================================
+#  Unity 项目
+# ============================================
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity 编译中间文件
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ============================================
+#  通用
+# ============================================
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.pdb
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# IDE / 编辑器
+.vscode/
+*.swp
+*.swo
+*~

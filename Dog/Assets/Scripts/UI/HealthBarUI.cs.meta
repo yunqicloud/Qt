@@ -1,0 +1,12 @@
+fileFormatVersion: 2
+guid: 06169014d439e504c8d0570d9a912f67
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - healBarPrefab: {fileID: 208295456623808942, guid: 94a040f8df05bae4e8f03298ea2daad5, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
